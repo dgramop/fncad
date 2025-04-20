@@ -1,12 +1,25 @@
 [package]
-name = "quick-start-simple"
+name = "fncad"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
+anyhow = "1.0.98"
+bytemuck = "1.22.0"
+cgmath = "0.18.0"
+crossbeam-channel = "0.5.15"
+derive-new = "0.7.0"
 eframe = "0.31.1"
 egui = "0.31.1"
-nalgebra = "0.33.2"
+env_logger = "0.11.8"
+log = "0.4"
+nalgebra = { version = "0.33.2", features = ["bytemuck"] }
 strum = { version = "0.27.1", features = ["derive"] }
+three-d = { version = "0.18.2", features = ["egui-gui"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+log = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+console_log = "1"

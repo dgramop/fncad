@@ -1,16 +1,20 @@
 use std::collections::BTreeMap;
-type Point3 = nalgebra::Point3<f32>;
+pub type Point3 = nalgebra::Point3<f32>;
 //TODO: boolean, epxlicit parameters
+
+pub enum RendererInput {
+    // BatchedShapes {
+    //     shapes: Vec<(usize, DeterminedShape)>,
+    // },
+    SingleShape { id: usize, shape: DeterminedShape },
+}
 
 // A fully specified shape we pass to manifoldcad, ready for rendering
 // TODO(Dhruv) include IDs here so troy can send them back when users force points in the ui
 pub enum DeterminedShape {
     Point(Point3),
     Line(Point3, Point3),
-    Circle {
-        radius: f32,
-        origin: Point3
-    }
+    Circle { radius: f32, origin: Point3 },
 }
 
 // Give everyone IDs (TODO)
@@ -25,7 +29,6 @@ pub struct Relation;
 // stopgap until we add user-defined expression support
 pub type Expr = f32;
 pub type Parameter = f32;
-
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PointId(pub usize);
@@ -44,12 +47,12 @@ pub struct Point {
 
 pub struct Segment {
     pub a: PointId,
-    pub b: PointId
+    pub b: PointId,
 }
 
 pub struct Circle {
     pub radius: Parameter,
-    pub origin: PointId
+    pub origin: PointId,
 }
 
 pub enum Constraint {
@@ -64,5 +67,3 @@ pub struct Objects {
     pub segments: BTreeMap<SegmentId, Segment>,
     pub circles: BTreeMap<CircleId, Circle>,
 }
-
-
