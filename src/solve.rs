@@ -13,6 +13,12 @@ pub enum DeterminedShape {
     }
 }
 
+type Id = usize;
+
+pub type RenderableScene = BTreeMap<Id, DeterminedShape>;
+
+// Give troy: map Id -> DeterminedShape
+
 // Give everyone IDs (TODO)
 
 // A relation that is passed to the solver
