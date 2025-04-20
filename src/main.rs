@@ -1,72 +1,8 @@
 use eframe::egui;
-use nalgebra::constraint;
-use egui::epaint::{self, CubicBezierShape, PathShape, QuadraticBezierShape};
-use std::collections::BTreeMap;
-type Point3 = nalgebra::Point3<f32>;
-//TODO: boolean, epxlicit parameters
-
-// A fully specified shape we pass to manifoldcad, ready for rendering
-// TODO(Dhruv) include IDs here so troy can send them back when users force points in the ui
-enum DeterminedShape {
-    Point(Point3),
-    Line(Point3, Point3),
-    Circle {
-        radius: f32,
-        origin: Point3
-    }
-}
-
-// Give everyone IDs (TODO)
-
-// A relation that is passed to the solver
-struct Relation;
-
-// An expression that a user types in
-//struct Expr;
-//
-
-// stopgap until we add user-defined expression support
-type Expr = f32;
-type Parameter = f32;
-
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PointId(pub usize);
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CircleId(pub usize);
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SegmentId(pub usize);
-
-pub struct Point {
-    pub x: Parameter,
-    pub y: Parameter,
-    pub z: Parameter,
-}
-
-pub struct Segment {
-    pub a: PointId,
-    pub b: PointId
-}
-
-pub struct Circle {
-    pub radius: Parameter,
-    pub origin: PointId
-}
-
-enum Constraint {
-    PointOnCircle(PointId, CircleId),
-    PointOnLine(PointId, SegmentId),
-    Distance(PointId, PointId, Expr),
-}
-
-#[derive(Default)]
-pub struct Objects {
-    pub points: BTreeMap<PointId, Point>,
-    pub segments: BTreeMap<SegmentId, Segment>,
-    pub circles: BTreeMap<CircleId, Circle>,
-}
+use nalgebra::{constraint, Point3};
+use egui::{epaint::{self, CubicBezierShape, PathShape, QuadraticBezierShape}, Color32, Pos2, Sense, Stroke, StrokeKind, Vec2};
+use solve::{Constraint, DeterminedShape, Objects, PointId};
+mod solve;
 
 /*fn make_system(constraints: Vec<Constraint>, objects: Objects) ->  {
 }*/
@@ -84,14 +20,30 @@ fn make_determinate(objects: Objects, constraints: Vec<Constraint>) -> Vec<Deter
 
 #[derive(Default)]
 struct MyApp {
-    name: String,
-    age: u32,
+    shapes: Vec<DeterminedShape>
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My egui Application");
+            let (response, painter) = ui.allocate_painter(egui::Vec2 { x: ui.available_width(), y: ui.available_height() }, Sense::hover());
+            let rect = response.rect;
+            let o = rect.center();
+
+            //painter.circle(rect.center(), rect.height()/2. - 2., Color32::RED, Stroke::default());
+            for shape in &self.shapes {
+                match shape {
+                    DeterminedShape::Point(pt) => {
+                        painter.rect(egui::Rect {
+                            min: o + Vec2::new(pt.x-2., pt.y-2.),
+                            max: o + Vec2::new(pt.x+2., pt.y+2.)
+                        }, 0, Color32::DARK_GREEN, Stroke::default(), StrokeKind::Inside);
+                    },
+                    DeterminedShape::Line(opoint, opoint1) => (),
+                    DeterminedShape::Circle { radius, origin } => (),
+                }
+            }
         });
     }
 }
@@ -101,7 +53,7 @@ fn main() {
     let mut objects = Objects::default();
     let constraints = vec![];
 
-    objects.points.insert(PointId(0), Point {
+    objects.points.insert(PointId(0), solve::Point {
         x: 0.,
         y: 0.,
         z: 0.,
@@ -117,7 +69,11 @@ fn main() {
         "My egui App",
         options,
         Box::new(|cc| {
-            Ok(Box::<MyApp>::default())
+            Ok(Box::new(
+                    MyApp {
+                        shapes: determined_shapes
+                    }
+                    ))
         }),
     ).expect("failed to start egui");
 }
