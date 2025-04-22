@@ -26,20 +26,20 @@ impl eframe::App for MyApp {
             //painter.circle(rect.center(), rect.height()/2. - 2., Color32::RED, Stroke::default());
             for pt in &self.shapes.points {
                 painter.rect(egui::Rect {
-                    min: o + Vec2::new(self.shapes.get_parameter(pt.x).unwrap().value-3., self.shapes.get_parameter(pt.y).unwrap().value-3.),
-                    max: o + Vec2::new(self.shapes.get_parameter(pt.x).unwrap().value+3., self.shapes.get_parameter(pt.y).unwrap().value+3.)
+                    min: o + Vec2::new(self.shapes.get_parameter(pt.x).unwrap().value as f32-3., self.shapes.get_parameter(pt.y).unwrap().value as f32-3.),
+                    max: o + Vec2::new(self.shapes.get_parameter(pt.x).unwrap().value as f32+3., self.shapes.get_parameter(pt.y).unwrap().value as f32+3.)
                 }, 0, Color32::GREEN, Stroke::default(), StrokeKind::Inside);
             };
 
             for Segment { a, b } in &self.shapes.segments {
                 let pt1 = self.shapes.get_point(*a).expect("Point used by segment exists");
                 let pt2 = self.shapes.get_point(*b).expect("Point used by segment exists");
-                painter.line_segment([o + Vec2::new(self.shapes.get_parameter(pt1.x).unwrap().value, self.shapes.get_parameter(pt1.y).unwrap().value), o + Vec2::new(self.shapes.get_parameter(pt2.x).unwrap().value, self.shapes.get_parameter(pt2.y).unwrap().value)], stroke.clone());
+                painter.line_segment([o + Vec2::new(self.shapes.get_parameter(pt1.x).unwrap().value as f32, self.shapes.get_parameter(pt1.y).unwrap().value as f32), o + Vec2::new(self.shapes.get_parameter(pt2.x).unwrap().value as f32, self.shapes.get_parameter(pt2.y).unwrap().value as f32)], stroke.clone());
             }
 
             for Circle { radius, origin } in &self.shapes.circles {
                 let origin = self.shapes.get_point(*origin).expect("Point used by circle exists");
-                painter.circle_stroke(o + Vec2 { x: self.shapes.get_parameter(origin.x).unwrap().value, y: self.shapes.get_parameter(origin.y).unwrap().value }, self.shapes.get_parameter(*radius).unwrap().value, stroke.clone());
+                painter.circle_stroke(o + Vec2 { x: self.shapes.get_parameter(origin.x).unwrap().value as f32, y: self.shapes.get_parameter(origin.y).unwrap().value as f32}, self.shapes.get_parameter(*radius).unwrap().value as f32, stroke.clone());
             }
 
         });

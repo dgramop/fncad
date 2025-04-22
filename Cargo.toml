@@ -14,5 +14,6 @@ cobyla = "0.6.0"
 crossbeam = { version = "0.8.4", features = ["crossbeam-channel"] }
 eframe = "0.31.1"
 egui = "0.31.1"
-nalgebra = "0.33.2"
+nalgebra = "0.32"
 strum = { version = "0.27.1", features = ["derive"] }
+argmin-math = { version = "0.4", features = ["nalgebra_latest"] }

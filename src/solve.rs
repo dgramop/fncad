@@ -5,7 +5,7 @@ use cas_compute::{numerical::{ctxt::Ctxt, eval::Eval, value::Value}, symbolic::e
 use cas_parser::parser::{ast::Expr, Parser};
 use cobyla::{minimize, RhoBeg};
 use nalgebra::{constraint, DMatrix, DVector};
-type Point3 = nalgebra::Point3<f32>;
+type Point3 = nalgebra::Point3<f64>;
 //TODO: boolean, epxlicit parameters
 
 // A fully specified shape we pass to manifoldcad, ready for rendering
@@ -14,11 +14,11 @@ pub enum DeterminedShape {
     Point(Point3),
     Line(Point3, Point3),
     Circle {
-        radius: f32,
+        radius: f64,
         origin: Point3
     },
     Sphere {
-        radius: f32,
+        radius: f64,
         origin: Point3
     }
 }
@@ -43,15 +43,15 @@ pub struct Relation;
 #[derive(Clone)]
 pub struct Parameter {
     /// Current value of this parameter
-    pub value: f32,
+    pub value: f64,
 
     /// If the initial value is locked (for example, because a user has overriden it, or because
     /// this CAD model is being called with this parameter given as an input)
     pub locked: bool
 }
 
-impl From<f32> for Parameter {
-    fn from(value: f32) -> Self {
+impl From<f64> for Parameter {
+    fn from(value: f64) -> Self {
         Self {
             value,
             locked: false
@@ -60,14 +60,14 @@ impl From<f32> for Parameter {
 }
 
 impl Parameter {
-    pub fn fixed(value: f32) -> Self {
+    pub fn fixed(value: f64) -> Self {
         Self {
             value,
             locked: true
         }
     }
 
-    pub fn free(value: f32) -> Self {
+    pub fn free(value: f64) -> Self {
         Self {
             value,
             locked: false
@@ -135,15 +135,34 @@ struct Problem {
     constraints: Vec<Constraint>
 }
 
+impl Problem {
+    fn solve(self) {
+        let init_param: DVector<f64> = DVector::from_vec(vec![0.9, 0.2]);
+
+        // Set up solver
+        let solver: GaussNewton<f64> = GaussNewton::new();
+
+        let params = DVector::from_iterator(self.objects.parameters.len(), self.objects.parameters.iter().map(|p| p.value));
+
+        // Run solver
+        let res = Executor::new(self, solver)
+            .configure(|state| state.param().max_iters(10))
+            .run()?;
+
+        // Print result
+        println!("{res}");
+    }
+}
+
 struct CtxtBuilder<'a> {
     objects: &'a Objects,
-    guess: &'a DVector<f32>,
+    guess: &'a DVector<f64>,
     ctxt: Ctxt
 }
 
 
 impl<'a> CtxtBuilder<'a> {
-    fn new(objects: &'a Objects, guess: &'a DVector<f32>) -> Self {
+    fn new(objects: &'a Objects, guess: &'a DVector<f64>) -> Self {
         Self {
             objects,
             guess,
@@ -175,9 +194,9 @@ impl<'a> From<CtxtBuilder<'a>> for Ctxt {
 // constraints -> CAS and culling -> expressions <-> solver
 impl Operator for Problem {
     // all the free var, corresponds to vec<parameter>
-    type Param = DVector<f32>;
+    type Param = DVector<f64>;
 
-    type Output = DVector<f32>;
+    type Output = DVector<f64>;
 
     fn apply(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
         // maybe a cleaner way to do lookups by looking up for an entire type at a time - like with
@@ -205,7 +224,7 @@ impl Operator for Problem {
 
                     let cost = Parser::new("sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r").try_parse_full::<Expr>().unwrap();
                     if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("equation is good").coerce_float() {
-                        ans.to_f32()
+                        ans.to_f64()
                     } else {
                         // we're cooked
                         0.0
@@ -218,9 +237,9 @@ impl Operator for Problem {
 }
 
 impl Jacobian for Problem {
-    type Param = DVector<f32>;
+    type Param = DVector<f64>;
 
-    type Jacobian = DMatrix<f32>;
+    type Jacobian = DMatrix<f64>;
 
     //TODO: autodifferentiation
     fn jacobian(&self, param: &Self::Param) -> Result<Self::Jacobian, argmin::core::Error> {
@@ -275,7 +294,7 @@ impl Jacobian for Problem {
 
                         let cost = Parser::new(expr).try_parse_full::<Expr>().unwrap(); //d/dx and friends
                         if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
-                            ans.to_f32()
+                            ans.to_f64()
                         } else {
                             //TODO: cooked
                             0.0
