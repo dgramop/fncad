@@ -62,7 +62,11 @@ fn main() {
         constraints
     };
 
-    problem.solve();
+    let results = problem.solve();
+
+    for parameter_id in 0..results.len() {
+        objects.parameters[parameter_id].value = results[parameter_id];
+    }
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),

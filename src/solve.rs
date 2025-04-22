@@ -136,7 +136,7 @@ pub struct Problem {
 }
 
 impl Problem {
-    pub fn solve(self) {
+    pub fn solve(self) -> DVector<f64> {
         // Set up solver
         //let solver: GaussNewton<f64> = GaussNewton::new();
         let solver = SteepestDescent::new(MoreThuenteLineSearch::new());
@@ -149,7 +149,9 @@ impl Problem {
             .run().unwrap();
 
         // Print result
-        println!("{res}");
+        //println!("{res}");
+
+        return res.state.best_param.unwrap();
     }
 }
 
@@ -201,7 +203,7 @@ impl Operator for Problem {
         // maybe a cleaner way to do lookups by looking up for an entire type at a time - like with
         // some kind of generics and with_dvector() conversion trait?
 
-        println!("len: {:?}", param.len());
+        //println!("len: {:?}", param.len());
 
         let guess = Ok(DVector::from_fn(self.constraints.len(), |constraint_index, _| {
             let constraint = &self.constraints[constraint_index];
@@ -235,7 +237,7 @@ impl Operator for Problem {
             }
         }));
 
-        println!("guess is off by {guess:?}");
+        //println!("guess is off by {guess:?}");
 
         guess
     }
