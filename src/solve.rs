@@ -129,14 +129,14 @@ impl Objects {
 }
 
 //TODO: CAS to simplify this
-struct Problem {
+pub struct Problem {
     // TODO: more intermediate stuff to make objects into expression-like things
-    objects: Objects,
-    constraints: Vec<Constraint>
+    pub objects: Objects,
+    pub constraints: Vec<Constraint>
 }
 
 impl Problem {
-    fn solve(self) {
+    pub fn solve(self) {
         let init_param: DVector<f64> = DVector::from_vec(vec![0.9, 0.2]);
 
         // Set up solver
@@ -146,8 +146,8 @@ impl Problem {
 
         // Run solver
         let res = Executor::new(self, solver)
-            .configure(|state| state.param().max_iters(10))
-            .run()?;
+            .configure(|state| state.param(params).max_iters(10))
+            .run().unwrap();
 
         // Print result
         println!("{res}");
@@ -166,7 +166,7 @@ impl<'a> CtxtBuilder<'a> {
         Self {
             objects,
             guess,
-            ctxt: Ctxt::new()
+            ctxt: Ctxt::default()
         }
     }
     

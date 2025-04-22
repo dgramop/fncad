@@ -1,7 +1,7 @@
 use eframe::egui;
 use nalgebra::{constraint, Point3};
 use egui::{epaint::{self, CubicBezierShape, PathShape, QuadraticBezierShape}, Color32, Pos2, Sense, Stroke, StrokeKind, Vec2};
-use solve::{Circle, CircleId, Constraint, DeterminedShape, Objects, Parameter, PointId, Segment, SegmentId};
+use solve::{Circle, CircleId, Constraint, DeterminedShape, Objects, Parameter, PointId, Problem, Segment, SegmentId};
 mod solve;
 
 /*fn make_system(constraints: Vec<Constraint>, objects: Objects) ->  {
@@ -56,6 +56,13 @@ fn main() {
     let circle = objects.add_circle(origin, Parameter::free(25.));
 
     let constraints = vec![Constraint::PointOnCircle(point, circle)];
+
+    let problem = Problem {
+        objects: objects.clone(),
+        constraints
+    };
+
+    problem.solve();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
