@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use argmin::{core::{CostFunction, Executor, Jacobian, Operator}, solver::{gaussnewton::GaussNewton, newton::Newton}};
+use argmin::{core::{CostFunction, Executor, Gradient, Jacobian, Operator}, solver::{gaussnewton::GaussNewton, gradientdescent::SteepestDescent, linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch}, newton::Newton}};
 use cas_compute::{numerical::{ctxt::Ctxt, eval::Eval, value::Value}, symbolic::expr};
 use cas_parser::parser::{ast::Expr, Parser};
 use cobyla::{minimize, RhoBeg};
@@ -137,10 +137,9 @@ pub struct Problem {
 
 impl Problem {
     pub fn solve(self) {
-        let init_param: DVector<f64> = DVector::from_vec(vec![0.9, 0.2]);
-
         // Set up solver
-        let solver: GaussNewton<f64> = GaussNewton::new();
+        //let solver: GaussNewton<f64> = GaussNewton::new();
+        let solver = SteepestDescent::new(MoreThuenteLineSearch::new());
 
         let params = DVector::from_iterator(self.objects.parameters.len(), self.objects.parameters.iter().map(|p| p.value));
 
@@ -202,7 +201,9 @@ impl Operator for Problem {
         // maybe a cleaner way to do lookups by looking up for an entire type at a time - like with
         // some kind of generics and with_dvector() conversion trait?
 
-        Ok(DVector::from_fn(self.constraints.len(), |constraint_index, _| {
+        println!("len: {:?}", param.len());
+
+        let guess = Ok(DVector::from_fn(self.constraints.len(), |constraint_index, _| {
             let constraint = &self.constraints[constraint_index];
 
             match constraint {
@@ -232,7 +233,11 @@ impl Operator for Problem {
                 }
                 _ => 0.0, //TODO(Dhruv) handle other constraint types
             }
-        }))
+        }));
+
+        println!("guess is off by {guess:?}");
+
+        guess
     }
 }
 
@@ -243,7 +248,7 @@ impl Jacobian for Problem {
 
     //TODO: autodifferentiation
     fn jacobian(&self, param: &Self::Param) -> Result<Self::Jacobian, argmin::core::Error> {
-        Ok(
+        let jacob = Ok(
             DMatrix::from_fn(self.constraints.len(), param.len(), |constraint_index, parameter_index| {
                 let constraint = &self.constraints[constraint_index];
 
@@ -303,7 +308,38 @@ impl Jacobian for Problem {
                     _ => 0.0 //TODO(Dhruv) handle 
                 }
             })
-        )
+        );
+
+        println!("result {jacob:?}");
+        jacob
+    }
+}
+
+impl CostFunction for Problem {
+    type Param = DVector<f64>;
+
+    type Output = f64;
+
+    fn cost(&self, param: &Self::Param) -> Result<Self::Output, argmin_math::Error> {
+        let cost = self.apply(param)?.sum().abs();
+        println!("Have cost {cost:?}");
+        Ok(cost)
+    }
+}
+
+impl Gradient for Problem {
+    type Param = DVector<f64>;
+
+    type Gradient = DVector<f64>;
+
+    fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin_math::Error> {
+        let mut grad = self.jacobian(param)?.row_sum().transpose();
+        if self.cost(&param)? < 0. {
+            grad = -grad;
+        }
+
+        println!("Have gradient {grad:?}");
+        Ok(grad)
     }
 }
 
