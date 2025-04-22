@@ -55,7 +55,10 @@ fn main() {
     
     let circle = objects.add_circle(origin, Parameter::free(25.));
 
-    let constraints = vec![Constraint::PointOnCircle(point, circle)];
+    let point2 = objects.add_point(Parameter::fixed(-30.), Parameter::fixed(0.), Parameter::fixed(0.));
+    let circle2 = objects.add_circle(point, Parameter::free(5.));
+
+    let constraints = vec![Constraint::PointOnCircle(point, circle), Constraint::PointOnCircle(point2, circle2), Constraint::PointOnCircle(point2, circle)];
 
     let problem = Problem {
         objects: objects.clone(),
@@ -63,6 +66,7 @@ fn main() {
     };
 
     let results = problem.solve();
+    println!("Solved {results}");
 
     for parameter_id in 0..results.len() {
         objects.parameters[parameter_id].value = results[parameter_id];

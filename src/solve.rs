@@ -250,70 +250,68 @@ impl Jacobian for Problem {
 
     //TODO: autodifferentiation
     fn jacobian(&self, param: &Self::Param) -> Result<Self::Jacobian, argmin::core::Error> {
-        let jacob = Ok(
-            DMatrix::from_fn(self.constraints.len(), param.len(), |constraint_index, parameter_index| {
-                let constraint = &self.constraints[constraint_index];
+        let jacob = DMatrix::from_fn(self.constraints.len(), param.len(), |constraint_index, parameter_index| {
+            let constraint = &self.constraints[constraint_index];
 
-                //TODO: do not even include fixed parameters in the solver.
-                if self.objects.get_parameter(ParameterId(parameter_index)).expect("TODO").locked {
-                    return 0.;
-                }
+            //TODO: do not even include fixed parameters in the solver.
+            if self.objects.get_parameter(ParameterId(parameter_index)).expect("TODO").locked {
+                return 0.;
+            }
 
-                match constraint {
-                    Constraint::PointOnCircle(point_id, circle_id) => {
-                        //TODO(Dhruv): generic into iterable parameters?
-                        let point = self.objects.get_point(*point_id).unwrap();
-                        let circle = self.objects.get_circle(*circle_id).unwrap();
-                        let origin = self.objects.get_point(circle.origin).unwrap();
+            match constraint {
+                Constraint::PointOnCircle(point_id, circle_id) => {
+                    //TODO(Dhruv): generic into iterable parameters?
+                    let point = self.objects.get_point(*point_id).unwrap();
+                    let circle = self.objects.get_circle(*circle_id).unwrap();
+                    let origin = self.objects.get_point(circle.origin).unwrap();
 
-                        // does this parameter appear inside this function?
-                        let candidate = ParameterId(parameter_index);
+                    // does this parameter appear inside this function?
+                    let candidate = ParameterId(parameter_index);
 
-                        let expr = if candidate == point.x {
-                            "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == point.y {
-                            "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == point.z {
-                            "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == origin.x {
-                            "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == origin.y {
-                            "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == origin.z {
-                            "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
-                        } else if candidate == circle.radius {
-                            return -1.;
-                        } else {
-                            return 0.;
-                        };
+                    let expr = if candidate == point.x {
+                        "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == point.y {
+                        "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == point.z {
+                        "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == origin.x {
+                        "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == origin.y {
+                        "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == origin.z {
+                        "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    } else if candidate == circle.radius {
+                        return -1.;
+                    } else {
+                        return 0.;
+                    };
 
-                        let mut ctxt = CtxtBuilder::new(&self.objects, param);
+                    let mut ctxt = CtxtBuilder::new(&self.objects, param);
 
-                        ctxt.put("x", point.x);
-                        ctxt.put("y", point.y);
-                        ctxt.put("z", point.z);
+                    ctxt.put("x", point.x);
+                    ctxt.put("y", point.y);
+                    ctxt.put("z", point.z);
 
-                        ctxt.put("a", origin.x);
-                        ctxt.put("b", origin.y);
-                        ctxt.put("c", origin.z);
+                    ctxt.put("a", origin.x);
+                    ctxt.put("b", origin.y);
+                    ctxt.put("c", origin.z);
 
-                        ctxt.put("r", circle.radius);
+                    ctxt.put("r", circle.radius);
 
-                        let cost = Parser::new(expr).try_parse_full::<Expr>().unwrap(); //d/dx and friends
-                        if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
-                            ans.to_f64()
-                        } else {
-                            //TODO: cooked
-                            0.0
-                        }
-                    },
-                    _ => 0.0 //TODO(Dhruv) handle 
-                }
-            })
-        );
+                    let cost = Parser::new(expr).try_parse_full::<Expr>().unwrap(); //d/dx and friends
+                    if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
+                        ans.to_f64()
+                    } else {
+                        unimplemented!();
+                    }
+                },
+                _ => unimplemented!() //TODO(Dhruv) handle 
+            }
+        })
+        ;
 
-        println!("result {jacob:?}");
-        jacob
+        println!("jacobian {jacob}");
+        Ok(jacob)
     }
 }
 
@@ -340,7 +338,7 @@ impl Gradient for Problem {
             grad = -grad;
         }
 
-        println!("Have gradient {grad:?}");
+        println!("Have gradient {grad} for {param}");
         Ok(grad)
     }
 }
