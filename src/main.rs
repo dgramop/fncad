@@ -46,7 +46,6 @@ impl eframe::App for MyApp {
     }
 }
 
-
 fn main() {
     let mut objects = Objects::default();
 
