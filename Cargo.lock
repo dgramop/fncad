@@ -2749,6 +2749,8 @@ name = "quick-start-simple"
 version = "0.1.0"
 dependencies = [
  "argmin",
+ "cas-compute",
+ "cas-parser",
  "cas-rs",
  "cobyla",
  "crossbeam",

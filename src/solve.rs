@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
 use argmin::{core::{CostFunction, Executor, Jacobian, Operator}, solver::{gaussnewton::GaussNewton, newton::Newton}};
+use cas_compute::{numerical::{ctxt::Ctxt, eval::Eval, value::Value}, symbolic::expr};
+use cas_parser::parser::{ast::Expr, Parser};
 use cobyla::{minimize, RhoBeg};
 use nalgebra::{constraint, DMatrix, DVector};
 type Point3 = nalgebra::Point3<f32>;
@@ -37,7 +39,6 @@ pub struct Relation;
 //
 
 // stopgap until we add user-defined expression support
-pub type Expr = f32;
 
 #[derive(Clone)]
 pub struct Parameter {
@@ -134,6 +135,42 @@ struct Problem {
     constraints: Vec<Constraint>
 }
 
+struct CtxtBuilder<'a> {
+    objects: &'a Objects,
+    guess: &'a DVector<f32>,
+    ctxt: Ctxt
+}
+
+
+impl<'a> CtxtBuilder<'a> {
+    fn new(objects: &'a Objects, guess: &'a DVector<f32>) -> Self {
+        Self {
+            objects,
+            guess,
+            ctxt: Ctxt::new()
+        }
+    }
+    
+    //TODO: builder/just put in semi-anonymous stuff
+    fn put(&mut self, name: &'static str, id: ParameterId) {
+        if let Parameter { value, locked: true } = self.objects.get_parameter(id).expect("parameter exists") {
+            // it's locked, don't use the solved version
+            self.ctxt.add_var(name, (*value as f64).into());
+        } else {
+            // we're solving for this, use the guess
+            self.ctxt.add_var(name, (self.guess[id.0] as f64).into());
+        }
+    }
+
+}
+
+impl<'a> From<CtxtBuilder<'a>> for Ctxt {
+    fn from(value: CtxtBuilder) -> Self {
+        value.ctxt
+    }
+}
+
+
 //                          forced points -v
 // constraints -> CAS and culling -> expressions <-> solver
 impl Operator for Problem {
@@ -145,9 +182,6 @@ impl Operator for Problem {
     fn apply(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
         // maybe a cleaner way to do lookups by looking up for an entire type at a time - like with
         // some kind of generics and with_dvector() conversion trait?
-        let lookup = |id: ParameterId| {
-            *param.get(id.0).expect("parameter id exists")
-        };
 
         Ok(DVector::from_fn(self.constraints.len(), |constraint_index, _| {
             let constraint = &self.constraints[constraint_index];
@@ -158,13 +192,24 @@ impl Operator for Problem {
                     let circle = self.objects.get_circle(*circle).unwrap();
                     let origin = self.objects.get_point(circle.origin).unwrap();
 
-                    f32::abs(
-                        f32::sqrt(
-                            ((lookup)(point.x) - (lookup)(origin.x)).powi(2) + 
-                            ((lookup)(point.y) - (lookup)(origin.y)).powi(2) +
-                            ((lookup)(point.z) - (lookup)(origin.z)).powi(2)) 
-                        - (lookup)(circle.radius)
-                    )
+                    let mut ctxt = CtxtBuilder::new(&self.objects, param);
+                    ctxt.put("x", point.x);
+                    ctxt.put("y", point.y);
+                    ctxt.put("z", point.z);
+
+                    ctxt.put("a", origin.x);
+                    ctxt.put("b", origin.y);
+                    ctxt.put("c", origin.z);
+
+                    ctxt.put("r", circle.radius);
+
+                    let cost = Parser::new("sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r").try_parse_full::<Expr>().unwrap();
+                    if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("equation is good").coerce_float() {
+                        ans.to_f32()
+                    } else {
+                        // we're cooked
+                        0.0
+                    }
                 }
                 _ => 0.0, //TODO(Dhruv) handle other constraint types
             }
@@ -182,13 +227,59 @@ impl Jacobian for Problem {
         Ok(
             DMatrix::from_fn(self.constraints.len(), param.len(), |constraint_index, parameter_index| {
                 let constraint = &self.constraints[constraint_index];
+
+                //TODO: do not even include fixed parameters in the solver.
+                if self.objects.get_parameter(ParameterId(parameter_index)).expect("TODO").locked {
+                    return 0.;
+                }
+
                 match constraint {
                     Constraint::PointOnCircle(point_id, circle_id) => {
-                        if point_id.x == parameter_index {
-                        } else if point_id.y == parameter_index {
-                        } else if point_id.z == parameter_index {
-                        }
+                        //TODO(Dhruv): generic into iterable parameters?
+                        let point = self.objects.get_point(*point_id).unwrap();
+                        let circle = self.objects.get_circle(*circle_id).unwrap();
+                        let origin = self.objects.get_point(circle.origin).unwrap();
 
+                        // does this parameter appear inside this function?
+                        let candidate = ParameterId(parameter_index);
+
+                        let expr = if candidate == point.x {
+                            "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == point.y {
+                            "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == point.z {
+                            "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == origin.x {
+                            "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == origin.y {
+                            "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == origin.z {
+                            "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        } else if candidate == circle.radius {
+                            return -1.;
+                        } else {
+                            return 0.;
+                        };
+
+                        let mut ctxt = CtxtBuilder::new(&self.objects, param);
+
+                        ctxt.put("x", point.x);
+                        ctxt.put("y", point.y);
+                        ctxt.put("z", point.z);
+
+                        ctxt.put("a", origin.x);
+                        ctxt.put("b", origin.y);
+                        ctxt.put("c", origin.z);
+
+                        ctxt.put("r", circle.radius);
+
+                        let cost = Parser::new(expr).try_parse_full::<Expr>().unwrap(); //d/dx and friends
+                        if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
+                            ans.to_f32()
+                        } else {
+                            //TODO: cooked
+                            0.0
+                        }
                     },
                     _ => 0.0 //TODO(Dhruv) handle 
                 }
@@ -219,11 +310,19 @@ impl Objects {
         return ParameterId(self.parameters.len() - 1)
     }
 
+    pub fn get_parameter(&self, p: ParameterId) -> Option<&Parameter> {
+        self.parameters.get(p.0)
+    }
+
     pub fn add_point(&mut self, x: Parameter, y: Parameter, z: Parameter) -> PointId {
+        let x = self.add_parameter(x);
+        let y = self.add_parameter(y);
+        let z = self.add_parameter(z);
+
         self.points.push(Point {
-            x: self.add_parameter(x),
-            y: self.add_parameter(y),
-            z: self.add_parameter(z)
+            x,
+            y,
+            z 
         });
 
         return PointId(self.points.len()-1);
@@ -234,9 +333,10 @@ impl Objects {
     // Otherwise, they would have to manually export specific things from linking 
 
     pub fn add_circle(&mut self, origin: PointId, radius: Parameter) -> CircleId {
+        let radius = self.add_parameter(radius);
         self.circles.push(Circle {
             origin,
-            radius: self.add_parameter(radius)
+            radius
         });
         return CircleId(self.circles.len()-1);
     }
