@@ -51,14 +51,11 @@ fn main() {
 
     let origin = objects.add_point(Parameter::fixed(0.), Parameter::fixed(0.), Parameter::fixed(0.));
 
-    let point = objects.add_point(Parameter::fixed(-50.), Parameter::fixed(0.), Parameter::fixed(0.));
+    let point = objects.add_point(Parameter::fixed(-50.), Parameter::fixed(50.), Parameter::fixed(0.));
     
     let circle = objects.add_circle(origin, Parameter::free(25.));
 
-    let point2 = objects.add_point(Parameter::fixed(-30.), Parameter::fixed(0.), Parameter::fixed(0.));
-    let circle2 = objects.add_circle(point, Parameter::free(5.));
-
-    let constraints = vec![Constraint::PointOnCircle(point, circle), Constraint::PointOnCircle(point2, circle2), Constraint::PointOnCircle(point2, circle)];
+    let constraints = vec![Constraint::PointOnCircle(point, circle)];
 
     let problem = Problem {
         objects: objects.clone(),
