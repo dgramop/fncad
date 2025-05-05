@@ -7,9 +7,12 @@ edition = "2021"
 
 [dependencies]
 argmin = "0.10.0"
-cas-compute = { version = "0.1.0", features = ["numerical"] }
-cas-parser = "0.1.0"
-cas-rs = "0.1.0"
+#cas-compute = { version = "0.1.0", features = ["numerical"] }
+#cas-parser = "0.1.0"
+#cas-rs = "0.1.0"
+cas-compute = { path = "../cas-rs/cas-compute", features = ["numerical"] }
+cas-parser = { path = "../cas-rs/cas-parser"}
+cas-rs = { path = "../cas-rs/cas-rs"}
 cobyla = "0.6.0"
 crossbeam = { version = "0.8.4", features = ["crossbeam-channel"] }
 eframe = "0.31.1"

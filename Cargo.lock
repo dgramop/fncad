@@ -634,8 +634,6 @@ dependencies = [
 [[package]]
 name = "cas-attrs"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8e4b44edbe345dce3717380ced7c9508415e316ba461a3816b5204a382a92ee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -645,8 +643,6 @@ dependencies = [
 [[package]]
 name = "cas-compute"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5de19aba8fe0eaf40af1a9b6ce7344199714dff0af028eba2c2aa414de25158"
 dependencies = [
  "ariadne",
  "cas-attrs",
@@ -661,8 +657,6 @@ dependencies = [
 [[package]]
 name = "cas-error"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1011cd6b1144d632d84385c2bb0f3234059583073e4186a5669a0cff1ebd50c"
 dependencies = [
  "ariadne",
 ]
@@ -670,8 +664,6 @@ dependencies = [
 [[package]]
 name = "cas-parser"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8086632f452aaa0dca057b4b01017d939ee833e453c7b185ea4bd3a297743abb"
 dependencies = [
  "ariadne",
  "cas-attrs",
@@ -682,8 +674,6 @@ dependencies = [
 [[package]]
 name = "cas-rs"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6006da9ad8af7dbda6d9cc67c9fb5a30e460f925bc4f37b63d38e0f4ccfdd480"
 dependencies = [
  "ariadne",
  "cas-compute",

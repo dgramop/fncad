@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use argmin::{core::{CostFunction, Executor, Gradient, Jacobian, Operator}, solver::{gaussnewton::GaussNewton, gradientdescent::SteepestDescent, linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch}, newton::Newton}};
-use cas_compute::{numerical::{ctxt::Ctxt, eval::Eval, value::Value}, symbolic::expr};
+use cas_compute::{numerical::{ctxt::Ctxt, eval::Eval, value::Value}, symbolic::{derivative::derivative, expr}};
 use cas_parser::parser::{ast::Expr, Parser};
 use cobyla::{minimize, RhoBeg};
 use nalgebra::{constraint, DMatrix, DVector};
@@ -190,6 +190,8 @@ impl<'a> From<CtxtBuilder<'a>> for Ctxt {
     }
 }
 
+//TODO: mechanism to generate this + Ctxt from a Constraint
+const POINT_ON_CIRCLE: &'static str = "sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r";
 
 //                          forced points -v
 // constraints -> CAS and culling -> expressions <-> solver
@@ -225,7 +227,7 @@ impl Operator for Problem {
 
                     ctxt.put("r", circle.radius);
 
-                    let cost = Parser::new("sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r").try_parse_full::<Expr>().unwrap();
+                    let cost = Parser::new(POINT_ON_CIRCLE).try_parse_full::<Expr>().unwrap();
                     if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("equation is good").coerce_float() {
                         ans.to_f64()
                     } else {
@@ -268,18 +270,20 @@ impl Jacobian for Problem {
                     // does this parameter appear inside this function?
                     let candidate = ParameterId(parameter_index);
 
-                    let expr = if candidate == point.x {
-                        "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                    let cost = Parser::new(POINT_ON_CIRCLE).try_parse_full::<Expr>().unwrap().into();
+
+                    let derivative = if candidate == point.x {
+                        derivative(&cost, "x")
                     } else if candidate == point.y {
-                        "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        derivative(&cost, "y")
                     } else if candidate == point.z {
-                        "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        derivative(&cost, "z")
                     } else if candidate == origin.x {
-                        "x - a / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        derivative(&cost, "a")
                     } else if candidate == origin.y {
-                        "y - b / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        derivative(&cost, "b")
                     } else if candidate == origin.z {
-                        "z - c / sqrt((x-a)^2 + (y-b)^2 + (z-c)^2)"
+                        derivative(&cost, "c")
                     } else if candidate == circle.radius {
                         return -1.;
                     } else {
@@ -298,8 +302,9 @@ impl Jacobian for Problem {
 
                     ctxt.put("r", circle.radius);
 
-                    let cost = Parser::new(expr).try_parse_full::<Expr>().unwrap(); //d/dx and friends
-                    if let Value::Float(ans) = cost.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
+                    let derivative = Expr::from(derivative);
+
+                    if let Value::Float(ans) = derivative.eval(&mut ctxt.into()).expect("TODO").coerce_float() {
                         ans.to_f64()
                     } else {
                         unimplemented!();
