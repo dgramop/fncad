@@ -145,7 +145,7 @@ impl Problem {
 
         // Run solver
         let res = Executor::new(self, solver)
-            .configure(|state| state.param(params).max_iters(10))
+            .configure(|state| state.param(params).max_iters(100))
             .run().unwrap();
 
         // Print result
@@ -191,7 +191,7 @@ impl<'a> From<CtxtBuilder<'a>> for Ctxt {
 }
 
 //TODO: mechanism to generate this + Ctxt from a Constraint
-const POINT_ON_CIRCLE: &'static str = "sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r";
+const POINT_ON_CIRCLE: &'static str = "(sqrt((x-a)^2 + (y-b)^2 + (z-c)^2) - r)^2";
 
 //                          forced points -v
 // constraints -> CAS and culling -> expressions <-> solver
@@ -272,6 +272,7 @@ impl Jacobian for Problem {
 
                     let cost = Parser::new(POINT_ON_CIRCLE).try_parse_full::<Expr>().unwrap().into();
 
+                    //TODO: precompute derivatives instead of every iteration
                     let derivative = if candidate == point.x {
                         derivative(&cost, "x")
                     } else if candidate == point.y {
@@ -285,7 +286,7 @@ impl Jacobian for Problem {
                     } else if candidate == origin.z {
                         derivative(&cost, "c")
                     } else if candidate == circle.radius {
-                        return -1.;
+                        derivative(&cost, "r")
                     } else {
                         return 0.;
                     };
