@@ -22,6 +22,16 @@
 
         craneLib = crane.mkLib pkgs;
 
+        dynamicLibs = [] ++ pkgs.lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+          libxkbcommon
+          vulkan-loader
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXrandr
+          xorg.libxcb
+          xorg.libXi
+          stdenv.cc.cc.lib
+        ]);
         # Common arguments can be set here to avoid repeating them later
         # Note: changes here will rebuild all dependency crates
         commonArgs = {
@@ -33,36 +43,31 @@
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
-          ];
+          ] ++ dynamicLibs;
         };
 
-        my-crate = craneLib.buildPackage (commonArgs // {
+        fncad = craneLib.buildPackage (commonArgs // {
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-
-          # Additional environment variables or build phases/hooks can be set
-          # here *without* rebuilding all dependency crates
-          # MY_CUSTOM_VAR = "some value";
         });
       in
       {
         checks = {
-          inherit my-crate;
+          inherit fncad;
         };
 
-        packages.default = my-crate;
+        packages.default = fncad;
 
         apps.default = flake-utils.lib.mkApp {
-          drv = my-crate;
+          drv = fncad;
         };
 
         devShells.default = craneLib.devShell {
-          # Inherit inputs from checks.
           checks = self.checks.${system};
 
-          # Additional dev-shell environment variables can be set directly
-          # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
+          shellHook = ''
+            ${if (pkgs.stdenv.isLinux) then "export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath (dynamicLibs ++ [ "/run/opengl-driver" ])}" else ""}
+          '';
 
-          # Extra inputs can be added here; cargo and rustc are provided by default.
           packages = [
             pkgs.rust-analyzer
           ];
